@@ -53,7 +53,7 @@ local fileName = args[2]
 
 if command == "install" then
     install(fileName)
-elif command == "update" then
+elseif command == "update" then
     update(fileName)
 else
     print("Invalid command. Use 'install' or 'update'.")
