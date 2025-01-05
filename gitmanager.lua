@@ -13,7 +13,7 @@ local function downloadFile(fileName)
         local content = response.readAll()
         response.close()
 
-        local file = fs.open(fileName .. ".lua", "w")
+        local file = fs.open(fileName, "w")
         file.write(content)
         file.close()
 
