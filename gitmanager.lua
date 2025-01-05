@@ -1,7 +1,7 @@
 -- GitHub Manager Script for ComputerCraft
 -- Replace the following variables with your GitHub repository details
 
-local GITHUB_REPO_URL = "https://raw.githubusercontent.com/0300dbdd1b/ComputerCraft/main/"
+local GITHUB_REPO_URL = "https://raw.githubusercontent.com/0300dbdd1b/ComputerCraft/refs/heads/main/"
 
 -- Helper function to download a file
 local function downloadFile(fileName)
