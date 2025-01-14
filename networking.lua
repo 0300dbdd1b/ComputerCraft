@@ -1,6 +1,6 @@
 
 -- Universal ComputerCraft Script with Label-Based Targeting
-local modemSide = "top" -- Adjust based on your setup
+local modemSide = "top" -- Adjust this based on your setup
 rednet.open(modemSide)
 
 -- Define the services supported by this computer
@@ -15,13 +15,16 @@ end
 
 -- Function to advertise services
 local function advertiseServices()
-    local message = {
-        type = "advertisement",
-        label = label,
-        id = os.getComputerID(),
-        services = services
-    }
-    rednet.broadcast(message)
+    while true do
+        local message = {
+            type = "advertisement",
+            label = label,
+            id = os.getComputerID(),
+            services = services
+        }
+        rednet.broadcast(message)
+        sleep(5) -- Adjust the interval for service broadcasts
+    end
 end
 
 -- Function to broadcast a command (only for emitters)
@@ -42,77 +45,68 @@ local function broadcastCommand(command, targets)
 end
 
 -- Function to handle incoming messages
-local function handleMessage(senderId, message)
-    if type(message) ~= "table" then return end
+local function handleMessage()
+    while true do
+        local _, senderId, message = os.pullEvent("rednet_message")
+        if type(message) ~= "table" then return end
 
-    if message.type == "advertisement" then
-        -- Print advertisement info (optional)
-        print("Received advertisement from:", message.label, "(ID:", senderId .. ")")
-        print("Services:", table.concat(message.services, ", "))
-    elseif message.type == "command" then
-        -- Check if this computer is a target
-        local isTargeted = message.targets == "all" or (type(message.targets) == "table" and table.concat(message.targets):find(label))
-        if isTargeted then
-            print("Executing command from emitter:", message.label)
-            local success, err = pcall(load(message.command))
-            if not success then
-                print("Error executing command:", err)
+        if message.type == "advertisement" then
+            -- Print advertisement info (optional)
+            print("Received advertisement from:", message.label, "(ID:", senderId .. ")")
+            print("Services:", table.concat(message.services, ", "))
+        elseif message.type == "command" then
+            -- Check if this computer is a target
+            local isTargeted = message.targets == "all" or (type(message.targets) == "table" and table.concat(message.targets):find(label))
+            if isTargeted then
+                print("Executing command from emitter:", message.label)
+                local success, err = pcall(load(message.command))
+                if not success then
+                    print("Error executing command:", err)
+                end
+            else
+                print("Command not intended for this computer. Ignoring...")
             end
-        else
-            print("Command not intended for this computer. Ignoring...")
         end
     end
 end
 
--- Main loop
-local function main()
-    print("Starting...")
-    -- Advertise services periodically
-    parallel.waitForAny(
-        function() -- Periodic advertisement
-            while true do
-                advertiseServices()
-                sleep(5) -- Adjust the interval for service broadcasts
-            end
-        end,
-        function() -- Listen for messages
-            while true do
-                local event, senderId, message, _ = os.pullEvent("rednet_message")
-                if event == "rednet_message" then
-                    handleMessage(senderId, message)
-                end
-            end
-        end,
-        function() -- Emitter mode (optional)
-            if table.concat(services):find("emitter") then
-                print("Emitter mode enabled. Type commands to broadcast.")
-                while true do
-                    io.write("Enter command: ")
-                    local command = read()
-                    io.write("Enter target labels (comma-separated, or 'all', or 'none'): ")
-                    local targetsInput = read()
+-- Function for emitter mode (only active if the computer has the 'emitter' service)
+local function emitterMode()
+    if not table.concat(services):find("emitter") then
+        while true do sleep(1) end -- Keep this task alive if not an emitter
+    end
 
-                    -- Parse targets
-                    local targets
-                    if targetsInput == "all" then
-                        targets = "all"
-                    elseif targetsInput == "none" then
-                        targets = {}
-                    else
-                        targets = {}
-                        for targetLabel in string.gmatch(targetsInput, "[^,]+") do
-                            table.insert(targets, targetLabel:match("^%s*(.-)%s*$")) -- Trim spaces
-                        end
-                    end
+    print("Emitter mode enabled. Type commands to broadcast.")
+    while true do
+        io.write("Enter command: ")
+        local command = read()
+        io.write("Enter target labels (comma-separated, or 'all', or 'none'): ")
+        local targetsInput = read()
 
-                    -- Broadcast the command
-                    if command and #command > 0 then
-                        broadcastCommand(command, targets)
-                    end
-                end
+        -- Parse targets
+        local targets
+        if targetsInput == "all" then
+            targets = "all"
+        elseif targetsInput == "none" then
+            targets = {}
+        else
+            targets = {}
+            for targetLabel in string.gmatch(targetsInput, "[^,]+") do
+                table.insert(targets, targetLabel:match("^%s*(.-)%s*$")) -- Trim spaces
             end
         end
-    )
+
+        -- Broadcast the command
+        if command and #command > 0 then
+            broadcastCommand(command, targets)
+        end
+    end
+end
+
+-- Main loop using parallel.waitForAll to ensure all tasks keep running
+local function main()
+    parallel.waitForAll(advertiseServices, handleMessage, emitterMode)
 end
 
 main()
+
