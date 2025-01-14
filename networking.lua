@@ -1,5 +1,5 @@
 
--- Universal ComputerCraft Script with File Execution and Arguments
+-- Universal ComputerCraft Script with Improved Command Handling
 local modemSide = "top" -- Adjust based on your setup
 rednet.open(modemSide)
 
@@ -70,15 +70,16 @@ local function handleMessage()
                     table.insert(args, commandParts[i])
                 end
 
-                if script:match("%.lua$") and fs.exists(script) then
+                -- Check and append `.lua` if needed
+                if not script:match("%.lua$") then
+                    script = script .. ".lua"
+                end
+
+                if fs.exists(script) then
                     -- Run the specified Lua file with arguments
                     shell.run(script, table.unpack(args))
                 else
-                    -- Execute the command as Lua code
-                    local success, err = pcall(load(message.command))
-                    if not success then
-                        print("Error executing command:", err)
-                    end
+                    print("Error: Script '" .. script .. "' not found.")
                 end
             else
                 print("Command not intended for this computer. Ignoring...")
