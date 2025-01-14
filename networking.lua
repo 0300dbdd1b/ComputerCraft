@@ -1,6 +1,6 @@
 
--- Universal ComputerCraft Script with Label-Based Targeting
-local modemSide = "top" -- Adjust this based on your setup
+-- Universal ComputerCraft Script with File Execution and Arguments
+local modemSide = "top" -- Adjust based on your setup
 rednet.open(modemSide)
 
 -- Define the services supported by this computer
@@ -59,9 +59,26 @@ local function handleMessage()
             local isTargeted = message.targets == "all" or (type(message.targets) == "table" and table.concat(message.targets):find(label))
             if isTargeted then
                 print("Executing command from emitter:", message.label)
-                local success, err = pcall(load(message.command))
-                if not success then
-                    print("Error executing command:", err)
+                local commandParts = {}
+                for part in string.gmatch(message.command, "[^%s]+") do
+                    table.insert(commandParts, part)
+                end
+
+                local script = commandParts[1]
+                local args = {}
+                for i = 2, #commandParts do
+                    table.insert(args, commandParts[i])
+                end
+
+                if script:match("%.lua$") and fs.exists(script) then
+                    -- Run the specified Lua file with arguments
+                    shell.run(script, table.unpack(args))
+                else
+                    -- Execute the command as Lua code
+                    local success, err = pcall(load(message.command))
+                    if not success then
+                        print("Error executing command:", err)
+                    end
                 end
             else
                 print("Command not intended for this computer. Ignoring...")
